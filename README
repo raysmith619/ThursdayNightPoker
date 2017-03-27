@@ -1,0 +1,23 @@
+===================================================================
+Thursday Night Poker
+
+A Python video poker game adapted from Paul Griffiths videopoker
+Goal is to support the playing of board based poker games
+ 	e.g. 2 cards your hand plus some shared cards shown on the "board"
+ 	     from which players can choose to complete one or two hands
+ 	High-Low: in which straights or flushes don't count against low
+ 	
+Uses the Tkinter library.
+
+Written for Python 2.7
+
+Release 0.1
+
+Copyright 2017 Charles Raymond Smith
+Email: raysmith@alum.mit.edu
+
+Distributed under the terms of the GNU General Public License.
+http://www.gnu.org/licenses/
+===================================================================
+
+Run the program from the command line in a GUI environment.
