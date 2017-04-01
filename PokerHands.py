@@ -15,6 +15,7 @@ from PokerCard import PokerCard
 from PokerDeal import PokerDeal
 from PokerHandHL import PokerHandHL
 from PokerHandDirection import PokerHandDirection
+from PokerComb import PokerComb
 
 HIGH = PokerHandDirection.HIGH
 LOW = PokerHandDirection.LOW
@@ -96,15 +97,15 @@ class PokerHands(object):
         """
         if player is None:
             raise NotImplementedError("player=None not supported yet")
-        hands = self.getHands(player=player, sort=True)
+        hand_combs = self.getHands(player=player, sort=True)
         if nHand is None:
             nHand = 1
         count = 0    
-        for hand in hands:
+        for i in xrange(hand_combs.nHands()):
             count += 1
             if count > nHand:
                 break
-            
+            hand = hand_combs.getHand(1)
             hand_str = hand.show_value(short=short, full=full)
             hs = "\t{}".format(hand_str)
                         # Separate player cards and board cards
@@ -131,7 +132,7 @@ class PokerHands(object):
                 direction=None,
                 sort=True):
         """
-        Determine what hands are currently makbeable
+        Determine what hands are currently makeable
         by any other player than the given player
         given the player's cards and community cards
         player - current player
@@ -150,54 +151,14 @@ class PokerHands(object):
         known_cards.extend(board_cards)
         deck_cards = self.subCards(known_cards)  # get possible in deck
         board_groups = board.getGroups()
-        hand_groups = []
+        hand_comb = PokerComb(direction=direction,
+                              lowFlushStrait=self.lowFlushStrait)
         for board_group in board_groups:
             deck_hand_cards = deck_cards[:]        # copy group
             deck_hand_cards.extend(board_group)      # Possibly more than 5
             if len(deck_hand_cards) >= self.deal.handSize():
-                hand_comb = itertools.combinations(deck_hand_cards,
-                                                    self.deal.handSize())
-                hand_groups.extend(hand_comb)
-        hands = self.groups2tuples(hand_groups)
-        hands = sorted(hands, cmp=PokerHands.tupleCmp, reverse=True)
-        return hands
-
-            
-    def getOtherHandtuples(self, player=None,
-                direction=None,
-                sort=True):
-        """
-        list of XX, tuples because of space
-        Determine what hands are currently makbeable
-        by any other player than the given player
-        given the player's cards and community cards
-        player - current player
-        direction - High, Low, High_Low
-        sorted - True == sort hands from most valued to least
-        """
-        if direction is None:
-            direction = self.direction
-        if direction is None:
-            direction = self.direction = self.deal.direction
-            
-        player_cards = player.getCards()
-        board = self.deal.getBoard()
-        board_cards = board.getCards()
-        known_cards = player_cards
-        known_cards.extend(board_cards)
-        deck_cards = self.subCards(known_cards)  # get possible in deck
-        board_groups = board.getGroups()
-        hand_groups = []
-        for board_group in board_groups:
-            deck_hand_cards = deck_cards[:]        # copy group
-            deck_hand_cards.extend(board_group)      # Possibly more than 5
-            if len(deck_hand_cards) >= self.deal.handSize():
-                hand_comb = itertools.combinations(deck_hand_cards,
-                                                    self.deal.handSize())
-                hand_groups.extend(hand_comb)
-        hands = self.groups2tuples(hand_groups)
-        hands = sorted(hands, cmp=PokerHands.tupleCmp, reverse=True)
-        return hands
+                hand_comb.addComb(deck_hand_cards, self.deal.handSize())
+        return hand_comb
 
             
     def getHands(self, player=None,
@@ -206,6 +167,7 @@ class PokerHands(object):
         """
         Determine what hands are currently makeable given
         the player's cards and community cards
+        Returns PokerComb object with hands info
         player - current player
         direction - High, Low, High_Low
         sorted - True == sort hands from most valued to least
@@ -218,17 +180,14 @@ class PokerHands(object):
         player_cards = player.getCards()
         board = self.deal.getBoard()
         board_groups = board.getGroups()
-        hand_groups = []
+        hand_comb = PokerComb(direction=direction,
+                              lowFlushStrait=self.lowFlushStrait)
         for board_group in board_groups:
             hand_cards = player_cards[:]        # copy group
             hand_cards.extend(board_group)      # Possibly more than 5
             if len(hand_cards) >= self.deal.handSize():
-                hand_comb = itertools.combinations(hand_cards,
-                                                    self.deal.handSize())
-                hand_groups.extend(hand_comb)
-        hands = self.groups2hands(hand_groups)
-        hands1 = sorted(hands, cmp=PokerHands.handCmp, reverse=True)
-        return hands1
+                hand_comb.addComb(hand_cards, self.deal.handSize())
+        return hand_comb
 
             
     def getHandtuples(self, player=None,
@@ -348,14 +307,15 @@ class PokerHands(object):
             direction = self.direction
         if direction is None:
             direction.PokerHandDirection.HIGH
-        hands = self.getHandtuples(player=player)    # list of XX, tuples because of space
-        other_hands = self.getOtherHandtuples(player=player)    # list of XX, tuples because of space
-        len_hands = len(hands)
-        len_other = len(other_hands)
+        hands_comb = self.getHands(player=player)    # list of XX, tuples because of space
+        other_hands_comb = self.getOtherHands(player=player, sort=False)    # list of XX, tuples because of space
+        len_hands = hands_comb.nHands()
+        len_other = other_hands_comb.nHands()
         prob = 0
         if len_hands > 0 and len_other > 0:
-            best_hand = hands[0]
-            nbetter, nequal, nworse = self.betEqWorse(best_hand, other_hands)   # list of XX tuples
+            best_hand = hands_comb.bestHand()
+            nbetter, nequal, nworse = other_hands_comb.betEqWorse(
+                best_hand)   # list of XX tuples
             prob = float(nworse)/len_other
         elif len_other == 0:
             prob = .1

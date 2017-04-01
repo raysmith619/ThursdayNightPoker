@@ -312,11 +312,11 @@ class PokerCardBase(object):
 
     @staticmethod
     def cardsInStrait():
-        return PokerCardBase.nCardInStrait
+        return PokerCardBase.nInStrait
 
     @staticmethod
     def cardsInFlush():
-        return PokerCardBase._nCardInFlush
+        return PokerCardBase.nInFlush
 
 
     @staticmethod

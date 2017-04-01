@@ -42,7 +42,7 @@ class PokerHandBase(object):
     Implemented as a full sequence container class.
 
     Public methods:
-    __init__(deck, numcards, namelist, cardlist, nocopy)
+    __init__( deck, numcards, namelist, cardlist, nocopy)
     copy()
     discard()
     draw(numcards)
@@ -103,6 +103,7 @@ class PokerHandBase(object):
         self._score = []
         self._cards = []
         self._deck = deck
+        self.numcards = numcards
         self.direction = direction
 
         if numcards and deck and not namelist:

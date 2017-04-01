@@ -4,6 +4,8 @@ Created on Mar 8, 2017
 @author: raysm
 '''
 from __future__ import print_function
+import re
+
 from PyTrace import tR  # trace activity support
 from PokerCardBase import PokerCardBase
 
@@ -15,6 +17,41 @@ class PokerCard(PokerCardBase):
     """
     Static methods
     """
+    
+    @staticmethod
+    def cards(cardstr):
+        """
+        Convert string of short card names into a list of cards
+        Stings(case insens of the form "1S,2C,3H,10S" or "1S 2C 3H 10S" or "1s2c3h10s"
+                or "1s, 2s, 3s" or "1s-2s-3s"
+                Splitting regular expression is: \s*[+,:;-]\s*
+        """
+        c_pattern = '\s*[+,:;-]\s*'        # separate card string
+        cws_pattern = '\s+'             # White space separation
+        card_pattern = '([aAkKqQjJ]|\d|10)[cChHdDsS]'                 
+        card_strs = []
+        if re.search(c_pattern, cardstr):
+            card_strs = re.split(c_pattern, cardstr)
+        elif re.search(cws_pattern, cardstr):
+            card_strs = re.split(cws_pattern, cardstr)
+        else:
+            """ looking from left for matches of the form ([aAkKqQjJ]|\d|10)[cChHdDsS] """
+            cs_str = cardstr
+            while True:
+                m = re.search(card_pattern, cs_str)
+                if m:
+                    cs = cs_str[m.start():m.end()]
+                    card_strs.append(cs)        # Add next card
+                    cs_str = cs_str[m.end():]   # search the rest of the string
+                else:
+                    break                       # No more cards
+        
+        cards = []
+        for card_str in card_strs:
+            card = PokerCard(name=card_str)
+            cards.append(card)
+        return cards  
+            
     @staticmethod
     def setup(nsuit=None, ninsuit=None, ncard=None):
         """
@@ -102,6 +139,9 @@ class PokerCard(PokerCardBase):
     
     def setHidden(self, hidden=True):
         self.hidden = hidden
+    
+    def setBoard(self, board=True):
+        self.inBoard = board
         
     def setPosition(self,position):
         self.position = position 

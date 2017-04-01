@@ -4,7 +4,7 @@ Poker rules for one game
 @author: raysm
 '''
 from __future__ import print_function
-
+from PokerHandDirection import PokerHandDirection
 # Exceptions
 
 class UnsupportedGameError(Exception):
@@ -33,7 +33,8 @@ class PokerGame(object):
                 nBoardUp = 0,   # Number of up board cards
                 nStraitCards=None, # Length of strait, default: handSize
                 nFlushCards=None,  # Length of flush, default: handSize
-                direction=3,    # Direction: 1 - high, 2 - low, 3 - high-low
+                direction=PokerHandDirection.HIGH_LOW,    # Direction for win
+                lowFlushStrait = True,       # disregard flush,strait in low 
                 plays = []):    # Plays in deal
         '''
         Constructor
@@ -52,6 +53,7 @@ class PokerGame(object):
             nFlushCards = self.handSize
         self.nFlushCards = nFlushCards
         self.direction = direction
+        self.lowFlushStrait = lowFlushStrait
         self.plays = plays
         
         

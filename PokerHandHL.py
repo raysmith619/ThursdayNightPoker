@@ -101,18 +101,20 @@ class PokerHandHL(PokerHandBase):
     _vp_returns_normal = [0, 1, 2, 3, 4, 6, 9, 25, 50, 800]
     _vp_returns_easy = [0, 2, 3, 4, 15, 20, 50, 100, 250, 2500]
 
-    def __init__(self, numcards=PokerCardBase.cardsInHand(), namelist=None, cardlist=None,
+    def __init__(self, deck=None,
+                numcards=0, namelist=None, cardlist=None,
                 direction=HIGH, lowFlushStrait=None):
 
         """Initializes a PokerHandBase instance.
 
 
         Arguments:
+        deck - deck, if one, draw from
+        numcards - number of cards to immediately draw from
         direction - HIGH, LOW, HIGH_LOW => HIGH
         lowFlushStrait - don't consider flushes, straits when low low
         """
 
-        
         self._singles = []
         self._hand_info = None
 
@@ -126,7 +128,7 @@ class PokerHandHL(PokerHandBase):
         
         
             
-        PokerHandBase.__init__(self, numcards=numcards,
+        PokerHandBase.__init__(self, deck=deck, numcards=numcards,
                                namelist=namelist, cardlist=cardlist,
                                direction=direction)
 
@@ -137,13 +139,22 @@ class PokerHandHL(PokerHandBase):
         """
         Return a deep copy
         """
-        ph = PokerHandHL(self, deck=self.deck,
-                       numcards=self.numcards,
-                       namelist=None, cardlist=None,
-                       direction=self.direction,
-                       lowFlushStrait=self.lowFlushStrait)
+        ph = PokerHandHL(
+                         deck = self._deck,
+                         numcards=self.numcards,
+                         namelist=None, cardlist=None,
+                         direction=self.direction,
+                         lowFlushStrait=self.lowFlushStrait)
         return ph
 
+
+    def getScore(self):
+        """
+        Returns: hand's score list (see _set_score
+        """
+        self._evaluate()
+        return self._score
+    
 
     def simpleString(self, short=True, full=False):
         """
@@ -386,11 +397,13 @@ class PokerHandHL(PokerHandBase):
         do and false if we don't.
 
         """
-
-        if PokerCardBase.cardsInHand in self._get_suit_counts().values():
+        n_in_f = PokerCardBase.cardsInFlush()
+        suit_counts = self._get_suit_counts().values()
+        if n_in_f in suit_counts:
             return True
         else:
             return False
+
 
     def _cards_changed(self):
 
