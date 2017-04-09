@@ -43,9 +43,16 @@ class PokerDeck(object):
     shuffle()
 
     """
+    @staticmethod
+    def fullDeck():
+        """
+        Returns a full deck of cards
+        """
+        deck = PokerDeck()
+        return deck._cards
     
-    def __init__(self, packs=1, nsuit=4, ninsuit=13,
-                 ncard=None):
+    
+    def __init__(self, packs=1):
 
         """Initializes a Deck instance.
 
@@ -55,18 +62,8 @@ class PokerDeck(object):
         packs -- the number of packs to put into the deck, set to
         something greater than 1 to create a deck consisting of
         multiple packs.
-        nsuit - number of suits: default=4
-        ninsuit = number in each suit
-        ncards - 1-52 how many cards in deck
-            Mostly for debugging / experimentation, to 
-            reduce the combinatorial math
         """
 
-        if (nsuit is not None or
-            ninsuit is not None or
-            ncard is not None):
-            PokerCard.setup(nsuit=nsuit, ninsuit=ninsuit,
-                             ncard=ncard)
         if not isinstance(packs, int) or not packs > 0:
             raise ValueError("Argument 'packs' must be a positive integer.")
         
@@ -177,7 +174,7 @@ class PokerDeck(object):
             self.replace_discards()
 
         random.shuffle(self._cards)
-
+        
     # Indexing and iteration methods
 
     def __len__(self):

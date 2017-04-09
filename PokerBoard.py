@@ -11,6 +11,7 @@ from PyTrace import tR
 
 from PokerDeck import PokerDeck
 from PokerCard import PokerCard
+from PokerGames import Games
 from PokerHandDirection import PokerHandDirection
 # Exceptions
 
@@ -31,7 +32,7 @@ class PokerBoard(object):
     '''
 
 
-    def __init__(self, table, deck, game=None, direction=None):
+    def __init__(self, table, deck, gameName=None, direction=None):
         '''
         Constructor
         table our link to tracing
@@ -71,9 +72,10 @@ class PokerBoard(object):
         self.table = table
         self.deck = deck
         
-        if game == None:
-            game = "44"
-        self.game = game
+        if gameName == None:
+            gameName = "44"
+        self.gameName = gameName
+        self.game = Games[gameName]
         
         if direction == None:
             direction = PokerHandDirection.HIGH_LOW
@@ -86,23 +88,19 @@ class PokerBoard(object):
         """
         Setup board, including populating with cards from deck and displaying
         """
-        if self.game == "44":
-            self.ncard = 8
+        game = self.game
+        game_name = game.name
+        self.ncard = game.nBoard
+        self.minChoice = 1
+        self.maxChoice = 2
+        
+        if game_name == "44":
             self.nrow = 2
-            self.minChoice = 1
-            self.maxChoice = 2
             self.selections = [(1,5), (2,6), (3,7), (4,8)]
-        elif self.game == "Adjacent":
-            self.ncard = 8
-            self.minChoice = 1
-            self.maxChoice = 2
+        elif game_name == "Adjacent":
             self.selections = [(1,2), (2,3), (3,4), (4,5),
                                (5,6), (6,7), (7,8), (8,1)]
-        elif self.game == "toy":
-            self.ncard = 4
-            self.nrow = 2
-            self.minChoice = 1
-            self.maxChoice = 2
+        elif game_name == "toy":
             self.selections = [(1,3), (2,4)]
              
         else:

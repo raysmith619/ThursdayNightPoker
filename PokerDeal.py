@@ -11,6 +11,7 @@ from PokerCard import PokerCard
 from PokerCardBase import PokerCardBase
 from PokerGames import Games
 from PokerBoard import PokerBoard
+from PokerDeck import PokerDeck
 from PokerHandDirection import PokerHandDirection
 
 
@@ -43,23 +44,21 @@ class PokerDeal(object):
         if deck == None:
             deck = table.deck
         if deck == None:
-            raise AttributeError("PokerDeal has no deck")
+            deck = PokerDeck()
         self.deck = deck
             
         if gameName == None:
             gameName = table.game.name
         self.gameName = gameName
         game = self.game = Games[gameName]
-
+        game.setPokerSettings()      # Setup basic settings
+        
         if direction == None:
             direction = table.direction
         if direction == None:
             direction = game.direction
         self.direction = direction
         
-        PokerCardBase.setupHand(nCardInHand=game.handSize,
-                                nCardInFlush=game.nFlushCards,
-                                nCardInStrait=game.nStraitCards)
         if nplay == None:
             nplay = len(game.plays)
         self.nPlay = nplay
@@ -77,7 +76,7 @@ class PokerDeal(object):
         """
         place the board cards
         """
-        self.board = PokerBoard(self, self.deck, game=self.gameName)
+        self.board = PokerBoard(self, self.deck, gameName=self.gameName)
         """
         Deal out cards, one to player, until per-player number
         is reached

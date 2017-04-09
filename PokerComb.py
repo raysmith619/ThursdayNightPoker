@@ -7,6 +7,9 @@ Created on Mar 27, 2017
 '''
 from __future__ import print_function
 import itertools
+import re
+import os.path
+import bisect
 
 from numpy import fromiter
 from numpy import ones,empty,zeros,sum
@@ -55,7 +58,19 @@ class PokerComb(object):
             self.hands = np.zeros((0, self.nHDesc), np.uint8)
     
     
-
+    @staticmethod
+    def fileName(prefix):
+        """
+        Create file name for combination data
+        use PokerCardBase PokerComb_<prefix>_<nCard>_<nSuit>_<nInSuit>
+        """
+        name = "PokerComb_{}_{}_{}_{}.npy".format(prefix,
+                        PokerCardBase.getNCard(),
+                        PokerCardBase.nSuits(),
+                        PokerCardBase.cardsInSuit())
+        return name
+    
+    
     def addComb(self, cards, n_in_hand):
         """
         Add all hands created from cards taken
@@ -74,7 +89,6 @@ class PokerComb(object):
         # Generate new combination hands
         new_combs = self.combs(cards, n_in_hand)
         new_combs_len = len(new_combs)
-        item_size = len(new_combs[0])
         
         for i in xrange(new_combs_len):
             cc = new_combs[i]
@@ -83,20 +97,62 @@ class PokerComb(object):
         # Add in new cards,
         self.hands = newHands
         return self.hands
-    
-    def descCmp(self, desc1, desc2, direction = None, lowFlushStrait=None):
+
+
+    def loadComb(self, filename):
+        """
+        Load combination data
+        from file
+        """
+        if not re.match('\.[^.]*$', filename):
+            filename += '.npy'          # Default extension
+        self.hands = np.load(filename)
+        
+    def saveComb(self, filename):
+        """
+        Save combination data
+        to file
+        """
+        if not re.match('\.[^.]*$', filename):
+            filename += '.npy'          # Default extension
+        self.hands.view('uint8,uint8,uint8,uint8,uint8,uint8,uint8,uint8').sort(order=['f0','f1', 'f2'], axis=0)
+        np.save(filename, self.hands)
+
+
+    def fileExists(self, filename):
+        """
+        Returns true iff data file exists
+        """
+        if not re.match('\.[^.]*$', filename):
+            filename += '.npy'          # Default extension
+        return os.path.isfile(filename)         
+                
+    def descCmpHi(self, desc1, desc2):
         """
         return >,<,== zero if desc1 >,<,== desc2
         reversed if direction == LOW
         """
-        if direction is None:
-            direction = self.direction
-        if lowFlushStrait is None:
-            lowFlushStrait = self.lowFlushStrait
         res = 0
-        for i,byte1 in enumerate(desc1):
+        for i in xrange(self.nScoreBytes):
+            byte1 = desc1[i]
             byte2 = desc2[i]
-            if i == 0 and direction == LOW and self.lowFlushStrait:
+            if byte1 != byte2:
+                res =  int(byte1)-int(byte2)
+                break
+        return res
+
+
+    
+    def descCmpLow(self, desc1, desc2):
+        """
+        return >,<,== zero if desc1 >,<,== desc2
+        reversed if direction == LOW
+        """
+        res = 0
+        for i in xrange(self.nScoreBytes):
+            byte1 = desc1[i]
+            byte2 = desc2[i]
+            if i == 0:
                 nib1 = byte1 >> 4
                 if nib1 == 4 or nib1 == 5:
                     byte1 &= 0xFF
@@ -105,10 +161,21 @@ class PokerComb(object):
                     byte2 &= 0xFF
                 
             if byte1 != byte2:
-                if self.direction == LOW:
-                    res =  int(byte2)-int(byte1)
-                else:
-                    res =  int(byte1)-int(byte2)
+                res =  int(byte2)-int(byte1)
+                break
+        return res
+    
+    def descCmp(self, desc1, desc2):
+        """
+        return >,<,== zero if desc1 >,<,== desc2
+        reversed if direction == LOW
+        """
+        res = 0
+        for i in xrange(self.nScoreBytes):
+            byte1 = desc1[i]
+            byte2 = desc2[i]
+            if byte1 != byte2:
+                res =  int(byte1)-int(byte2)
                 break
         return res
             
@@ -277,18 +344,18 @@ class PokerComb(object):
         """
         """ TBD self made combinations to minimize storage """
         if len(cards) == n_in_hand:
-            hand_combs_list = [cards]        # Workaround for combination issue
+            hands_desc = self.cards2desc(cards)        # Workaround for combination issue
         else:
             hand_combs = itertools.combinations(cards, n_in_hand)
-            hand_combs_list = list(hand_combs)
         
-        nhands = len(hand_combs_list)
-        hands_desc = np.empty((nhands, self.nHDesc), dtype=np.uint8)
-        i = 0
-        print("list(hand_combs):{}".format(hand_combs_list))
-        for cs in list(hand_combs_list):
-            hands_desc[i] = self.cards2desc(cs)
-            i += 1
+            nhands = self.nComb(len(cards), n_in_hand)
+            hands_desc = np.empty((nhands, self.nHDesc), dtype=np.uint8)
+            i = 0
+            if tR('comb'):
+                print("list(hand_combs):{}".format(hand_combs))
+            for cs in hand_combs:
+                hands_desc[i] = self.cards2desc(cs)
+                i += 1
         return hands_desc
     
     
@@ -303,25 +370,91 @@ class PokerComb(object):
         numer = reduce(op.mul, xrange(n, n-k, -1))
         denom = reduce(op.mul, xrange(1, k+1))
         return numer//denom
+
+
+    def findLeft(self, hands, hand_desc, ilow=None, ihigh=None):
+        """
+        Find index to left of hand_desc
+        """
+        if ilow is None:
+            ilow = 0
+        if ihigh is None:
+            ihigh = len(hands)-1
+        while ilow < ihigh:
+            imid = (ihigh+ilow)/2
+            midval = hands[imid]
+            if self.descCmp(hand_desc, midval) > 0:
+                ilow = imid+1
+            else:
+                ihigh = imid
+
+        while ilow > 0 and self.descCmp(hands[ilow-1], hand_desc) == 0:
+            ilow -= 1               # Move to left most
+        return ilow
+
+
+    def findRight(self, hands, hand_desc, ilow=None, ihigh=None):
+        """
+        Find index to right of hand_desc
+        """
+        ilow = self.findLeft(hands, hand_desc, ilow=ilow, ihigh=ihigh)
+        ihigh = self.findEnd(hands, hand_desc, ilow=ilow)
+        return ihigh
+
+
+    def findEnd(self, hands, hand_desc, ilow=None):
+        """
+        Find index to left of hand_desc
+        """
+        if ilow is None:
+            ilow = 0
+    
+        while ilow < len(hands)-1 and self.descCmp(hands[ilow+1], hand_desc) == 0:
+            ilow += 1               # Move to left most
+        return ilow
+    
             
-                
     def betEqWorse(self, hand):
         """
-        Using tuples of short names to save space
+        Using compressed descriptions to save space
+        Assumes sorted hands
+        Returns (better, equal, less) numbers of other hands
+        """
+        hand_desc = self.hand2desc(hand)
+        ileft = self.findLeft(self.hands, hand_desc)
+        iright = self.findRight(self.hands, hand_desc, ilow=ileft)
+
+        nhands = len(self.hands)
+        nworse = ileft
+        if self.descCmp(self.hands[ileft], hand_desc) < 0:
+            nworse += 1
+        nequal = iright - ileft
+        if self.descCmp(self.hands[iright], hand_desc) == 0:
+            nequal += 1
+        nbetter = nhands - nworse - nequal    
+        return (nbetter, nequal, nworse)
+            
+            
+                
+    def betEqWorseUnsorted(self, hand):
+        """
+        Using compressed descriptions to save space
         Returns (better, equal, less) numbers of other hands
         """
         nbetter = 0
+        nworse = 0
         nequal = 0
         hand_desc = self.hand2desc(hand)
-        for i, other_desc in enumerate(self.hands):
+        for other_desc in self.hands:
             cmpval = self.descCmp(other_desc, hand_desc)
+            if self.direction == LOW:
+                cmpval = -cmpval
             if cmpval > 0:
                 nbetter += 1
+            elif cmpval < 0:
+                nworse += 1
             elif cmpval == 0:
                 nequal += 1
-            else:
-                break
-        nworse = len(self.hands) - nbetter - nequal
         return (nbetter, nequal, nworse)
             
         return None
@@ -335,13 +468,100 @@ class PokerComb(object):
 Stanalone test / exercise:
 """
 if __name__ == "__main__":
+    import time
+    
+    from PokerDeck import PokerDeck
+    from PokerTable import PokerTable
+    from PokerDeal import PokerDeal
     from PyTrace import PyTrace
     trace_str = ""
     ###trace_str = "prob"
+    t0 = time.time()
+    tprev = t0
+    
+    def timenow(msg):
+        global tprev
+        global t0
+        
+        tnow = time.time()
+        if not msg:
+            msg = "time"
+        tcuml = tnow - t0
+        tdelta = tnow - tprev
+        print("{}: {:.3f} ({:.3f})".format(msg, tdelta, tcuml))
+        tprev = tnow
+
+    timenow("Test Start")
+        
     PyTrace(flagStr=trace_str)
-    all_hands = []      # Store all hands
+    comb_name = ""          # Combination modifier
+    testgame = ""
+    testgame = "toy"
+    testgame = "44"
+    if testgame == "toy":
+        comb_name = testgame
+        table = PokerTable(nPlayer=2)
+        deal = PokerDeal(table, gameName=testgame)
+    elif testgame == "toy2":
+        comb_name = testgame
+        testgame = "toy"
+        table = PokerTable(nPlayer=2)
+        deal = PokerDeal(table, gameName=testgame)
+    else:
+        deckMain = PokerDeck()  # SHORT to reduce complexity
+        table = PokerTable(deck=deckMain)
+        deal = PokerDeal(table, gameName=testgame)
+    print("Cards in deck: {}".format(PokerCard.getNCard()))
+    print("Cards in hand: {}".format(PokerCard.cardsInHand()))
+    print("Suits: {} Cards in suit: {}".format(PokerCard.nSuits(), PokerCard.cardsInSuit()))
+    all_hands = []
+    timenow("Construct deck")
+    high_hand_file_name = PokerComb.fileName("high")
+    low_hand_file_name = PokerComb.fileName("low")
+    
+    deck_comb = PokerComb()
+    if deck_comb.fileExists(high_hand_file_name):
+        print("Load info from file:{}".format(high_hand_file_name))
+        deck_comb.loadComb(high_hand_file_name)
+        timenow("After high deck file load")
+    else:
+        deck_comb.addComb(PokerDeck.fullDeck(), PokerCardBase.cardsInHand())
+        timenow("After high deck initial construction")
+        deck_comb.saveComb(high_hand_file_name)
+        timenow("After low deck file save")
+    timenow("After deck construction")
+
+    deck_comb_low = PokerComb(direction=LOW, lowFlushStrait=True)
+    if deck_comb_low.fileExists(low_hand_file_name):
+        print("Load info from file:{}".format(low_hand_file_name))
+        deck_comb_low.loadComb(low_hand_file_name)
+        timenow("After low deck file load")
+    else:
+        deck_comb_low.addComb(PokerDeck.fullDeck(), PokerCardBase.cardsInHand())
+        timenow("After low deck initial construction")
+        deck_comb_low.saveComb(low_hand_file_name)
+        timenow("After low deck file save")
+    timenow("After low deck construction")
+        
     def testit(cardstr):
+        timenow("testit begin")
         cards = PokerCard.cards(cardstr)
+        """
+        Limit cards if toy game
+        to those that are legal
+        """
+        test_cards = []
+        for card in cards:
+            rank = card.rank()
+            suit = card.suit()
+            if rank > PokerCard.cardsInSuit()+1:    # Allow Ace
+                continue
+            if suit >= PokerCard.nSuits():
+                continue
+            if len(test_cards) >= PokerCard.cardsInHand():
+                continue
+            test_cards.append(card)
+        cards = test_cards
         
         hand_comb = PokerComb(direction=HIGH, lowFlushStrait=None)
         hand_desc = hand_comb.cards2desc(cards)
@@ -349,8 +569,18 @@ if __name__ == "__main__":
         hand = hand_comb.desc2hand(hand_desc)
         all_hands.append(hand)          # Store for cumulative tests
         hand_str = hand.showCards()
+        timenow("begin hand compute")
         print("card str: {}  cards:{}  desc_nibs: {} desc_str: {} ".format(cardstr, hand_str, hand_desc_nibs, hand_desc))
-
+        nbetter, neq, nworse = deck_comb.betEqWorse(hand)
+        print("    (>,==,<): {}, {}, {}".format(nbetter, neq, nworse))
+        timenow("After hand compute")
+        print("Low:")
+        timenow("begin low hand compute")
+        nbetter, neq, nworse = deck_comb_low.betEqWorse(hand)
+        print("    (>,==,<): {}, {}, {}".format(nbetter, neq, nworse))
+        timenow("after low hand compute")
+        
+        
     def test_end():
         hand_comb = PokerComb(hands=all_hands, direction=HIGH)
         best_hand = hand_comb.bestHand()
@@ -367,13 +597,14 @@ if __name__ == "__main__":
     """ """       
     testit("2c 3h 4s 5d 7c")
     testit("2c 3h 4s 5d 8c")
-    testit("2c 2h 4s 5d 7c")
+    testit("2c 2d 4s 5d 7c")
     testit("2c 2h 4s 5d 8c")
     testit("2c 2h 4s 4s 7c")
     testit("2c 2h 4s 4s 8c")
     testit("2c 2h 2s 4s 7c")
     testit("2c 2h 2s 5s 7c")
     testit("2c 3h 4s 5d 6c")
+    """ """
     testit("3h 4s 5d 6c 7c")
     testit("2c 3c 4c 5c 7c")
     testit("2c 3c 4c 5c 8c")
@@ -381,7 +612,6 @@ if __name__ == "__main__":
     testit("4c 4h 4s 6d 6c")
     testit("2c 2h 2s 2d 7c")
     testit("2c 2h 2s 2d 8c")
-    """ """
     testit("2s 3s 4s 5s 6s")
     testit("3s 4s 5s 6s 7s")
     testit("As Ks Qs Js 10s")

@@ -36,39 +36,6 @@ class PokerHands(object):
         return hand1.cmp(hand2)
                 
 
-    @staticmethod
-    def tupleCmp(tuphand1, tuphand2):
-        """
-        Using tuples (XX,XX....) to save space ==> using namelist
-        Compare two hands based on their direction
-        which must be the same
-        """
-        hand1 = PokerHandHL(namelist=list(tuphand1))
-        hand2 = PokerHandHL(namelist=list(tuphand2))
-        return hand1.cmp(hand2)
-                
-
-    @staticmethod
-    def handGroupHighCmp(hand_cards1, hand_cards2):
-        """
-        Calculate a ordered integer value indicating poker high hand value
-        given a list of cards.
-        hand - list of cards
-        """
-        return PokerHandHL.cmpCards(hand_cards1, hand_cards2,
-                                    direction=HIGH)
-                
-    @staticmethod
-    def handGroupLowCmp(hand_cards1, hand_cards2):
-        """
-        Calculate a ordered integer value indicating poker high hand value
-        given a list of cards.
-        hand - list of cards
-        """
-        return PokerHandHL.cmpCards(hand_cards1, hand_cards2,
-                                    direction=LOW)
-                
-
     def __init__(self, deal, direction=HIGH, lowFlushStrait=None):
         '''
         Constructor
@@ -189,38 +156,6 @@ class PokerHands(object):
                 hand_comb.addComb(hand_cards, self.deal.handSize())
         return hand_comb
 
-            
-    def getHandtuples(self, player=None,
-                 direction=None,
-                 sort=True):
-        """
-        list of XX, tuples because of space
-        Determine what hands are currently makeable given
-        the player's cards and community cards
-        player - current player
-        direction - High, Low, High_Low
-        sorted - True == sort hands from most valued to least
-        """
-        if direction is None:
-            direction = self.direction
-        if direction is None:
-            direction = self.direction = self.deal.direction
-            
-        player_cards = player.getCards()
-        board = self.deal.getBoard()
-        board_groups = board.getGroups()
-        hand_groups = []
-        for board_group in board_groups:
-            hand_cards = player_cards[:]        # copy group
-            hand_cards.extend(board_group)      # Possibly more than 5
-            ###self.dupCheck(hand_cards)
-            if len(hand_cards) >= self.deal.handSize():
-                hand_comb = itertools.combinations(hand_cards,
-                                                    self.deal.handSize())
-                hand_groups.extend(hand_comb)
-        hands = self.groups2tuples(hand_groups)
-        hands = sorted(hands, cmp=PokerHands.tupleCmp, reverse=True)
-        return hands
 
     def dupCheck(self, hand_cards, prefix=None):
         """ Looks for duplicate cards in hand
@@ -235,12 +170,12 @@ class PokerHands(object):
             for name in names:
                 new_cards.append(PokerCard(name=name))
             hand_cards = new_cards
-        card_count = Counter()
-        for card in hand_cards:
-            if card in card_count:
-                print("{}:getHandTupels: Duplicate card {}".format(prefix, card))
-                print("Problem")
-            card_count[card] += 1
+            card_count = Counter()
+            for card in hand_cards:
+                if card in card_count:
+                    print("{}:getHandTupels: Duplicate card {}".format(prefix, card))
+                    print("Problem")
+                card_count[card] += 1
 
 
     def subCards(self, cards, base=None):
@@ -271,23 +206,6 @@ class PokerHands(object):
         return diff_cards
     
     
-    def groups2tuples(self, hand_groups):
-        """
-        Using XX (short name) tuples to save space
-        Convert list of card groups, each of handSize, to list of hands
-        """
-        hands = []
-        for group in hand_groups:
-            short_names = []
-            for card in group:
-                short_names.append(card.name_string(short=True))
-            ###self.dupCheck(short_names, prefix="groups2tupels hand")            
-            hand_tuple = tuple(short_names)
-            ###self.dupCheck(hand_tuple, prefix="groups2tupels tuple")            
-            hands.append(hand_tuple)
-        return hands
-    
-    
     def groups2hands(self, hand_groups):
         """
         Convert list of card groups, each of handSize, to list of hands
@@ -307,27 +225,21 @@ class PokerHands(object):
             direction = self.direction
         if direction is None:
             direction.PokerHandDirection.HIGH
-        hands_comb = self.getHands(player=player)    # list of XX, tuples because of space
-        other_hands_comb = self.getOtherHands(player=player, sort=False)    # list of XX, tuples because of space
-        len_hands = hands_comb.nHands()
-        len_other = other_hands_comb.nHands()
-        prob = 0
-        if len_hands > 0 and len_other > 0:
-            best_hand = hands_comb.bestHand()
-            nbetter, nequal, nworse = other_hands_comb.betEqWorse(
+        hands_comb = self.getHands(player=player)
+        other_hands_comb = self.getOtherHands(player=player)
+        best_hand = hands_comb.bestHand()
+        nbetter, nequal, nworse = other_hands_comb.betEqWorse(
                 best_hand)   # list of XX tuples
-            prob = float(nworse)/len_other
-        elif len_other == 0:
-            prob = .1
+        
+        prob = float(nworse)/(nbetter+nequal+nworse)
+        prob_tie = float(nequal)/(nbetter+nequal+nworse)
+        prob_str = "{:.3f}({:.3f})".format(prob,prob_tie)
+
         if inclNumbers:
-            prob_str = "{:1.2f} (better,eq,worse: {}, {}, {})".format(
-                        prob, nbetter, nequal, nworse)
-        else:
-            prob_str = "{:1.2f}".format(prob)
+            prob_str += " (>,==,<: {}, {}, {})".format(
+                        nbetter, nequal, nworse)
         if tR('prob'):
-            our_hands = self.getHands(player=player)
-            our_best_hand = our_hands[0]
-            card_str = our_best_hand.simpleString(short=False, full=True)
+            card_str = best_hand.simpleString(short=False, full=True)
             print("{} win prob: {}".format(card_str, prob_str))
         return prob_str
 
@@ -342,27 +254,6 @@ class PokerHands(object):
                 return i
             
         return None
-
-    def betEqWorse(self, hand_tup, other_hand_tups):
-        """
-        Using tuples of short names to save space
-        Returns (better, equal, less) numbers of other hands
-        """
-        nbetter = 0
-        nequal = 0
-        hand = PokerHandHL(namelist=list(hand_tup))
-        for other_hand_tup in other_hand_tups:
-            other = PokerHandHL(namelist=list(other_hand_tup))
-            if other > hand:
-                nbetter += 1
-            elif other == hand:
-                nequal += 1
-            else:
-                break
-        nworse = len(other_hand_tups) - nbetter - nequal
-        return (nbetter, nequal, nworse)
-            
-        return None
     
 """
 Stanalone test / exercise:
@@ -374,7 +265,7 @@ if __name__ == "__main__":
     ###trace_str = "prob"
     PyTrace(flagStr=trace_str)
     testgame = "toy"
-    ###testgame = "44"
+    testgame = "44"
     if testgame == "toy":
         deckMain = PokerDeck(nsuit=3, ninsuit=5)  # SHORT to reduce complexity
         table = PokerTable(nPlayer=2, deck=deckMain)

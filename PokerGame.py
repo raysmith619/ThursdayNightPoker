@@ -5,6 +5,8 @@ Poker rules for one game
 '''
 from __future__ import print_function
 from PokerHandDirection import PokerHandDirection
+from PokerCardBase import PokerCardBase
+
 # Exceptions
 
 class UnsupportedGameError(Exception):
@@ -26,34 +28,55 @@ class PokerGame(object):
 
     def __init__(self,
                 name,           # Game name
-                handSize = 5,   # Hand size (number of cards making a hand)
                 nPlayerCards=4, # Number of cards to each player
                 nUp=0,          # Number of up cards
                 nBoard=8,       # Number of board cards
                 nBoardUp = 0,   # Number of up board cards
-                nStraitCards=None, # Length of strait, default: handSize
-                nFlushCards=None,  # Length of flush, default: handSize
                 direction=PokerHandDirection.HIGH_LOW,    # Direction for win
                 lowFlushStrait = True,       # disregard flush,strait in low 
-                plays = []):    # Plays in deal
+                plays = [],     # Plays in deal
+
+                nsuit=None,     # Basic Poker Settings
+                ninsuit=None,
+                ncard=None,
+                nCardInHand=None,
+                nCardInStrait=None,
+                nCardInFlush=None,
+                ):
         '''
         Constructor
         Game rules
         '''
         self.name = name
-        self.handSize = handSize
+        self.savePokerSettings(
+            nsuit=nsuit,
+            ninsuit=ninsuit,
+            ncard=ncard,
+            nCardInHand=nCardInHand,
+            nCardInStrait=nCardInStrait,
+            nCardInFlush=nCardInFlush
+            )
         self.nPlayerCards = nPlayerCards
         self.nUp = nUp
         self.nBoard = nBoard
         self.nBoardUp = nBoardUp
-        if nStraitCards is None:
-            nStraitCards = self.handSize
-        self.nStraitCards = nStraitCards
-        if nFlushCards is None:
-            nFlushCards = self.handSize
-        self.nFlushCards = nFlushCards
         self.direction = direction
         self.lowFlushStrait = lowFlushStrait
         self.plays = plays
         
+    
+    def savePokerSettings(self,**kwargs):
+        """
+        Save settings to be set when playting
+        this game
+        """
+        self.pokerSettings = kwargs
         
+        
+    def setPokerSettings(self):
+        """
+        Setup poker settings saved at game definition
+        """
+        PokerCardBase.setPokerSettings(**self.pokerSettings)
+        
+            

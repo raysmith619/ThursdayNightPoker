@@ -12,11 +12,24 @@ nbd=2;hsb=True
 pl = PokerPlay(nBoard=2, hasBet=True)
 pls =[pl, pl, pl, pl]
 Games["toy"] = PokerGame("toy",
-                handSize = 4,   # Hand size (number of cards making a hand)
-                nStraitCards=None, # Length of strait, default: handSize
-                nFlushCards=None,  # Length of flush, default: handSize
+                nCardInHand = 2,   # Hand size (number of cards making a hand)
+                nsuit=3,
+                ninsuit=3,
+                nCardInStrait=2,    # No one card straits/flushes
+                nCardInFlush=2,
+
+                nPlayerCards=1, # Number of cards to each player
+                nBoard=1, nBoardUp=0,
+                direction=PokerHandDirection.HIGH_LOW,
+                plays=[pl, pl])
+
+Games["toy2"] = PokerGame("toy2",
+                nCardInHand = 3,   # Hand size (number of cards making a hand)
+                nsuit=4,
+                ninsuit=8,
+                
                 nPlayerCards=3, # Number of cards to each player
-                nBoard=4, nBoardUp=0,
+                nBoard=2, nBoardUp=0,
                 direction=PokerHandDirection.HIGH_LOW,
                 plays=[pl, pl])
 

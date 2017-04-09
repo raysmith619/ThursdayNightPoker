@@ -172,7 +172,8 @@ def _get_index_integer(index):
     if index in range(0, PokerCardBase.nCard):
         return index
     else:
-        raise ValueError("Invalid index value '{0}'".format(index))
+        raise ValueError("Invalid index value '{}' of {}".format(index,
+                                            PokerCardBase.nCard))
 
 
 def _get_rank_and_suit_from_index(index):
@@ -265,26 +266,46 @@ class PokerCardBase(object):
     # No support for larger nSuit, nInSuit values
     nSuit = 4
     nInSuit = 13
-    nCard = 52
+    nCard = nSuit*nInSuit
     nCardInHand = 5
-    nInStrait = nCardInHand
-    nInFlush = nCardInHand
+    nCardInStrait = nCardInHand
+    nCardInFlush = nCardInHand
     
     
     @staticmethod
-    def setup(nsuit=None, ninsuit=None, ncard=None,
+    def setPokerSettings(nsuit=None,
+              ninsuit=None,
+              ncard=None,
               nCardInHand=None,
               nCardInStrait=None,
               nCardInFlush=None):
-        if nsuit is None:
-            nsuit = 4
-        if ninsuit is None:
-            ninsuit = 13
-        if ncard is None:
-            ncard = nsuit * ninsuit
-        PokerCardBase.nSuit = nsuit
-        PokerCardBase.nInSuit = ninsuit
-        PokerCardBase.nCard = ncard
+        """
+        Setup basic poker rules, especially if different
+        than the traditional rules
+        
+        Set values that are present and leave the others unchanged
+        If ncard is not specified
+            then nCard = nSuit * nInSuit
+        If nCardInHand is specified and nCardInStrait and nCardInFlush are not
+            then nCardInStrait and nCardInFlush are set to nCardInHand
+        """
+        if nsuit is not None:
+            PokerCardBase.nSuit = nsuit
+        if ninsuit is not None:
+            PokerCardBase.nInSuit = ninsuit
+        if ncard is not None:
+            PokerCardBase.nCard = ncard
+        elif nsuit is not None or ninsuit is not None:
+            PokerCardBase.nCard = PokerCardBase.nSuits() * PokerCardBase.cardsInSuit()
+        if nCardInHand is not None:
+            PokerCardBase.nCardInHand = nCardInHand
+        if nCardInStrait is not None:
+            PokerCardBase.nCardInStrait = nCardInStrait
+        if nCardInFlush is not None:
+            PokerCardBase.nCardInFlush = nCardInFlush
+        if nCardInHand is not None and nCardInStrait is None and nCardInFlush is None:
+            PokerCardBase.nCardInStrait = nCardInHand
+            PokerCardBase.nCardInFlush = nCardInFlush
     
     
     @staticmethod
@@ -312,11 +333,19 @@ class PokerCardBase(object):
 
     @staticmethod
     def cardsInStrait():
-        return PokerCardBase.nInStrait
+        return PokerCardBase.nCardInStrait
+
+    @staticmethod
+    def nSuits():
+        return PokerCardBase.nSuit
+
+    @staticmethod
+    def cardsInSuit():
+        return PokerCardBase.nInSuit
 
     @staticmethod
     def cardsInFlush():
-        return PokerCardBase.nInFlush
+        return PokerCardBase.nCardInFlush
 
 
     @staticmethod
