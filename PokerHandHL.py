@@ -385,7 +385,10 @@ class PokerHandHL(PokerHandBase):
         if len(set(sorted_ranks)) == len(sorted_ranks):
             if len(sorted_ranks) > 0 and sorted_ranks[-1] - sorted_ranks[0] == PokerCardBase.cardsInStrait()-1:
                 straight = True
-            elif len(sorted_ranks) > 1 and sorted_ranks[-1] - sorted_ranks[-2] == PokerCardBase.cardsInStrait()-1:      # A,2,3,4,... ???
+            elif (len(sorted_ranks) > 1 and 
+                  (sorted_ranks[-1] - sorted_ranks[-2]
+                         == PokerCardBase.cardsInSuit()-PokerCardBase.cardsInStrait()+1)
+                    ):
                 straight = True
                 high_card = PokerCardBase.cardsInStrait()
 

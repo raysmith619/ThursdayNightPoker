@@ -75,7 +75,7 @@ def get_rank_integer(rank):
         return PokerCardBase.nInSuit if rank == 1 else rank
     elif isinstance(rank, basestring):
         if not rank:
-            raise ValueError("Missing rank value.")
+            raise ValueError("Missing rank value({})".format(rank))
 
         for key in _ALLOWABLE_RANK_STRINGS.iterkeys():
             if key.startswith(rank.lower()):

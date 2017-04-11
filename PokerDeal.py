@@ -148,7 +148,7 @@ class PokerDeal(object):
 
 
     def handSize(self):
-        return self.game.handSize
+        return PokerCardBase.cardsInHand()
 
     def hasMorePlays(self):
         if self.playNum < self.nPlay:

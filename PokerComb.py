@@ -10,6 +10,7 @@ import itertools
 import re
 import os.path
 import bisect
+import time
 
 from numpy import fromiter
 from numpy import ones,empty,zeros,sum
@@ -24,6 +25,7 @@ from PokerCard import PokerCard
 HIGH = PokerHandDirection.HIGH
 LOW = PokerHandDirection.LOW
 HIGH_LOW = PokerHandDirection.HIGH_LOW
+tprev = t0 = None           # From timenow
 
 class PokerComb(object):
     '''
@@ -88,15 +90,35 @@ class PokerComb(object):
  
         # Generate new combination hands
         new_combs = self.combs(cards, n_in_hand)
-        new_combs_len = len(new_combs)
         
-        for i in xrange(new_combs_len):
+        for i in xrange(ncomb):
             cc = new_combs[i]
             newHands[i+old_number] = cc
                    
         # Add in new cards,
         self.hands = newHands
         return self.hands
+
+    tprev = t0 = None
+    @staticmethod
+    def timenow(msg):
+        """
+        Diagnostic interval time/display
+        """
+        global tprev
+        global t0
+        if tprev is None:
+            t0 = tprev = time.time()
+            return
+        
+        tnow = time.time()
+        if not msg:
+            msg = "time"
+        tcuml = tnow - t0
+        tdelta = tnow - tprev
+        print("{}: {:.3f} ({:.3f})".format(msg, tdelta, tcuml))
+        tprev = tnow
+
 
 
     def loadComb(self, filename):
@@ -314,13 +336,29 @@ class PokerComb(object):
             if is_board != 0:
                 card.setBoard()
             cards.append(card)
-            
+         
         hand = PokerHandHL(cardlist=cards,
                            direction=self.direction,
                            lowFlushStrait=self.lowFlushStrait)
         return hand
     
+
+    def desc2handStr(self, desc):
+        """
+        Convert description to hand string
+        """
+        if desc is None:
+            return "NONE"         # Protection for diagnistics
         
+        hand = self.desc2hand(desc)
+        return hand.showCards()
+    
+    
+    def getDescs(self):
+        """
+        Return numpy array of hands
+        """
+        return self.hands
         
     def getHand(self, npos):
         """
@@ -344,7 +382,7 @@ class PokerComb(object):
         """
         """ TBD self made combinations to minimize storage """
         if len(cards) == n_in_hand:
-            hands_desc = self.cards2desc(cards)        # Workaround for combination issue
+            hands_desc = [self.cards2desc(cards)]        # Workaround for combination issue
         else:
             hand_combs = itertools.combinations(cards, n_in_hand)
         
@@ -433,9 +471,31 @@ class PokerComb(object):
             nequal += 1
         nbetter = nhands - nworse - nequal    
         return (nbetter, nequal, nworse)
-            
-            
-                
+     
+     
+    def bounded(self, hand, nbetter, neq, nworse):
+        """
+         Provide string with hand immediately less, equal, greater
+         than the given hand.  Mostly for diagnostic purposes
+        """
+        nHands = self.nHands()
+        hand_str = hand.showCards()
+        if nbetter > 0:
+            higher_desc = self.hands[-nbetter]
+            higher_str = self.desc2handStr(higher_desc)
+        else:
+            higher_str = "NONE"
+        if nworse > 0:
+            worse_desc = self.hands[nworse-1]
+            worse_str = self.desc2handStr(worse_desc)
+        else:
+            worse_str = "NONE"
+        bounded_str = "{} > [{}] > {}".format(
+            higher_str, hand_str, worse_str)    
+        return bounded_str
+    
+    
+
     def betEqWorseUnsorted(self, hand):
         """
         Using compressed descriptions to save space
@@ -574,11 +634,15 @@ if __name__ == "__main__":
         nbetter, neq, nworse = deck_comb.betEqWorse(hand)
         print("    (>,==,<): {}, {}, {}".format(nbetter, neq, nworse))
         timenow("After hand compute")
+        print("High bounded: {}".format(
+            deck_comb.bounded(hand, nbetter, neq, nworse)))
         print("Low:")
         timenow("begin low hand compute")
         nbetter, neq, nworse = deck_comb_low.betEqWorse(hand)
         print("    (>,==,<): {}, {}, {}".format(nbetter, neq, nworse))
         timenow("after low hand compute")
+        print("Low bounded: {}".format(
+            deck_comb_low.bounded(hand, nbetter, neq, nworse)))
         
         
     def test_end():
@@ -595,6 +659,23 @@ if __name__ == "__main__":
         print("\tbetter={}, equal={}, worse={}".format(nbetter, neq, nworse))
         
     """ """       
+    testit("2D 5S 7H 6C 4C")
+    testit("6C 5C 4C 3C 2C")
+    testit("AH 5C 4C 3C 2C")
+
+    testit("AD QH 7H 7C 5C")
+    testit("AH 7C 4C 3C 2C")
+    testit("AH 6C 4C 3C 2C")
+
+    testit("AH 6C 4C 3C 2C")
+    testit("AH 5C 4C 3C 2C")
+    testit("6H 5C 4C 3C 2C")
+
+    testit("AS KS QS JS 10S")
+    testit("KS QS JS 10S 9S")
+    testit("4H 2H 7C 5C 3C")
+    
+    testit("AH 10C 4C 3C 2C")
     testit("2c 3h 4s 5d 7c")
     testit("2c 3h 4s 5d 8c")
     testit("2c 2d 4s 5d 7c")

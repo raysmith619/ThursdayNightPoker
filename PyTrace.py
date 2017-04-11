@@ -19,7 +19,7 @@ def tR(flag, *levels):
 		level = 1
 	if BaseTrace is not None:
 		return BaseTrace.trace(flag, level)
-	return True		# Not defined - trace all
+	return False		# Not defined - trace all
 
 class PyTrace(object):
 		

@@ -151,7 +151,8 @@ class PokerHands(object):
                               lowFlushStrait=self.lowFlushStrait)
         for board_group in board_groups:
             hand_cards = player_cards[:]        # copy group
-            hand_cards.extend(board_group)      # Possibly more than 5
+            board_group_list = list(board_group)
+            hand_cards.extend(board_group_list)      # Possibly more than 5
             if len(hand_cards) >= self.deal.handSize():
                 hand_comb.addComb(hand_cards, self.deal.handSize())
         return hand_comb
