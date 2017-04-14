@@ -8,6 +8,7 @@ from PokerComb import PokerComb
 
 
 hand_file_name = "PokerComb_high_52_4_13.npy"
+hand_file_name = "PokerComb_low_9_3_3.npy"
 deck_comb = PokerComb()
 if not deck_comb.fileExists(hand_file_name):
     print("File {} not found".format(hand_file_name))
@@ -32,5 +33,5 @@ for i in xrange(nhands):
     print("{}  desc_nibs: {} desc_str: {} ".format(
         hand_str, hand_desc_nibs, hand_desc), file=outf)
 PokerComb.timenow("After file save")
-        
+print("Saved file {}".format(out_file))        
 

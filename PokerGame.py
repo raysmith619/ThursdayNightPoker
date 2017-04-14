@@ -32,6 +32,7 @@ class PokerGame(object):
                 nUp=0,          # Number of up cards
                 nBoard=8,       # Number of board cards
                 nBoardUp = 0,   # Number of up board cards
+                boardSelections = None,
                 direction=PokerHandDirection.HIGH_LOW,    # Direction for win
                 lowFlushStrait = True,       # disregard flush,strait in low 
                 plays = [],     # Plays in deal
@@ -60,6 +61,7 @@ class PokerGame(object):
         self.nUp = nUp
         self.nBoard = nBoard
         self.nBoardUp = nBoardUp
+        self.boardSelections = boardSelections
         self.direction = direction
         self.lowFlushStrait = lowFlushStrait
         self.plays = plays

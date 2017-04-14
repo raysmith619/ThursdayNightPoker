@@ -17,9 +17,9 @@ Games["toy"] = PokerGame("toy",
                 ninsuit=3,
                 nCardInStrait=2,    # No one card straits/flushes
                 nCardInFlush=2,
-
                 nPlayerCards=1, # Number of cards to each player
                 nBoard=1, nBoardUp=0,
+                boardSelections = [(1,)],  # Board selections
                 direction=PokerHandDirection.HIGH_LOW,
                 plays=[pl, pl])
 
@@ -30,6 +30,7 @@ Games["toy2"] = PokerGame("toy2",
                 
                 nPlayerCards=3, # Number of cards to each player
                 nBoard=2, nBoardUp=0,
+                boardSelections = [(1, 2)],  # Board selections
                 direction=PokerHandDirection.HIGH_LOW,
                 plays=[pl, pl])
 

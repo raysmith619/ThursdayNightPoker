@@ -64,7 +64,7 @@ class PokerHands(object):
         """
         if player is None:
             raise NotImplementedError("player=None not supported yet")
-        hand_combs = self.getHands(player=player, sort=True)
+        hand_combs = self.getHands(player=player)
         if nHand is None:
             nHand = 1
         count = 0    
@@ -121,41 +121,14 @@ class PokerHands(object):
         hand_comb = PokerComb(direction=direction,
                               lowFlushStrait=self.lowFlushStrait)
         for board_group in board_groups:
-            deck_hand_cards = deck_cards[:]        # copy group
-            deck_hand_cards.extend(board_group)      # Possibly more than 5
-            if len(deck_hand_cards) >= self.deal.handSize():
-                hand_comb.addComb(deck_hand_cards, self.deal.handSize())
+            hand_comb.addCombGroup(deck_cards, board_group, self.deal.handSize())
+        hand_comb.sortCombIf()
         return hand_comb
 
             
     def getHands(self, player=None,
-                 direction=None,
-                 sort=True):
-        """
-        Determine what hands are currently makeable given
-        the player's cards and community cards
-        Returns PokerComb object with hands info
-        player - current player
-        direction - High, Low, High_Low
-        sorted - True == sort hands from most valued to least
-        """
-        if direction is None:
-            direction = self.direction
-        if direction is None:
-            direction = self.direction = self.deal.direction
-            
-        player_cards = player.getCards()
-        board = self.deal.getBoard()
-        board_groups = board.getGroups()
-        hand_comb = PokerComb(direction=direction,
-                              lowFlushStrait=self.lowFlushStrait)
-        for board_group in board_groups:
-            hand_cards = player_cards[:]        # copy group
-            board_group_list = list(board_group)
-            hand_cards.extend(board_group_list)      # Possibly more than 5
-            if len(hand_cards) >= self.deal.handSize():
-                hand_comb.addComb(hand_cards, self.deal.handSize())
-        return hand_comb
+                 direction=None):
+        return self.deal.getHands(player=player, direction=direction)
 
 
     def dupCheck(self, hand_cards, prefix=None):
@@ -265,16 +238,13 @@ if __name__ == "__main__":
     trace_str = ""
     ###trace_str = "prob"
     PyTrace(flagStr=trace_str)
-    testgame = "toy"
     testgame = "44"
+    testgame = "toy"
     if testgame == "toy":
-        deckMain = PokerDeck(nsuit=3, ninsuit=5)  # SHORT to reduce complexity
-        table = PokerTable(nPlayer=2, deck=deckMain)
-        deal = PokerDeal(table, gameName=testgame)
+        deal = PokerDeal(gameName=testgame)
     elif testgame == "toy2":
         testgame = "toy"
-        deckMain = PokerDeck(nsuit=4, ninsuit=8)  # SHORT to reduce complexity
-        table = PokerTable(nPlayer=2, deck=deckMain)
+        table = PokerTable(nPlayer=2)
         deal = PokerDeal(table, gameName=testgame)
     else:
         deckMain = PokerDeck()  # SHORT to reduce complexity
@@ -283,7 +253,7 @@ if __name__ == "__main__":
         
     poker_hands_high = PokerHands(deal, direction=HIGH)
     poker_hands_low = PokerHands(deal, direction=LOW, lowFlushStrait=True)
-    player = table.players[0]
+    player = deal.getPlayer(1)
     while deal.hasMorePlays():
         deal.play()
         poker_hands_high.displaySimpleHands(player=player, short=False, full=True, nHand=1)

@@ -32,7 +32,9 @@ class PokerBoard(object):
     '''
 
 
-    def __init__(self, table, deck, gameName=None, direction=None):
+    def __init__(self, table, deck, gameName=None, direction=None,
+                 nRow=None,
+                 selections=None):
         '''
         Constructor
         table our link to tracing
@@ -43,6 +45,7 @@ class PokerBoard(object):
         and the board display and players' access to the board cards
         
         direction: 1 - high, 2 - low, 3 - high-low
+        selections - custom selection list - mostly for debugging
 
         toy - toy version of "44" as 22
                 x1 x2
@@ -71,16 +74,19 @@ class PokerBoard(object):
         '''
         self.table = table
         self.deck = deck
+        self.nRow = nRow
         
         if gameName == None:
             gameName = "44"
         self.gameName = gameName
-        self.game = Games[gameName]
+        self.game = game = Games[gameName]
         
         if direction == None:
             direction = PokerHandDirection.HIGH_LOW
         self.direction = direction
-        
+        if selections is None:
+            selections = game.boardSelections       # custom game specific
+        self.selections = selections
         self.setBoard()
     
     
@@ -93,18 +99,18 @@ class PokerBoard(object):
         self.ncard = game.nBoard
         self.minChoice = 1
         self.maxChoice = 2
-        
-        if game_name == "44":
-            self.nrow = 2
-            self.selections = [(1,5), (2,6), (3,7), (4,8)]
-        elif game_name == "Adjacent":
-            self.selections = [(1,2), (2,3), (3,4), (4,5),
-                               (5,6), (6,7), (7,8), (8,1)]
-        elif game_name == "toy":
-            self.selections = [(1,3), (2,4)]
-             
-        else:
-            raise UnsupportedGameError("Don't yet support game {}".format(self.game))
+        if self.selections is None:
+            if game_name == "44":
+                self.nrow = 2
+                self.selections = [(1,5), (2,6), (3,7), (4,8)]
+            elif game_name == "Adjacent":
+                self.selections = [(1,2), (2,3), (3,4), (4,5),
+                                   (5,6), (6,7), (7,8), (8,1)]
+            elif game_name == "toy":
+                self.selections = [(1,3), (2,4)]
+            else:
+                raise UnsupportedGameError("Don't yet support game {}".format(self.game))
+
         self.populate()
 
 
@@ -182,13 +188,13 @@ class PokerBoard(object):
 
     def displaySimple(self, showAll=False):
         print("\nBoard:", end="")
-        if self.nrow is not None:
+        if self.nRow is not None:
             i = 0
-            ncol = self.ncard/self.nrow
-            for irow in range(self.nrow):
+            ncol = self.ncard/self.nRow
+            for irow in range(self.nRow):
                 if irow > 0:
                     print(" " * 6, end="")
-                for icol in range(ncol):
+                for icol in xrange(ncol):
                     pokerCard = self.cards[i]
                     print(" {}".format(
                         pokerCard.simpleString(showAll=showAll))
@@ -234,4 +240,3 @@ if __name__ == "__main__":
     deck = PokerDeck()
     deck.shuffle()
     board = PokerBoard(table, game="44")
-     

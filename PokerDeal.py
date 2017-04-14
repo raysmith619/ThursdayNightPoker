@@ -9,6 +9,8 @@ from PyTrace import tR
 
 from PokerCard import PokerCard
 from PokerCardBase import PokerCardBase
+from PokerComb import PokerComb
+from PokerTable import PokerTable
 from PokerGames import Games
 from PokerBoard import PokerBoard
 from PokerDeck import PokerDeck
@@ -25,39 +27,46 @@ class PokerDeal(object):
     Poker deal - current hand
     '''
     def __init__(self,
-                 table,         # Table
+                 table=None,         # Table
                  shuff=True,
                  deck = None,
                  gameName = None,
                  nplay = None,       # Default from game
                  minBet = None,
                  pot = None,
-                direction=HIGH_LOW):   # Direction: 1 - high, 2 - low, 3 - high-low
+                direction=None,     # Direction: 1 - high, 2 - low, 3 - high-low
+                lowFlushStrait=None):
         '''
         Constructor
         Deal
         '''
-        self.table = table      # Reference the table on which we play
         """
-        deal the deck
+        The game "rules the show" and can specify almost all the playing conditions
         """
-        if deck == None:
-            deck = table.deck
-        if deck == None:
-            deck = PokerDeck()
-        self.deck = deck
-            
         if gameName == None:
             gameName = table.game.name
         self.gameName = gameName
         game = self.game = Games[gameName]
         game.setPokerSettings()      # Setup basic settings
+
+        """
+        deal the deck
+        """
+        if deck == None:
+            deck = PokerDeck()
+        self.deck = deck
+
+        if table is None:
+            table = PokerTable(deck=deck)
+        self.table = table
         
-        if direction == None:
-            direction = table.direction
         if direction == None:
             direction = game.direction
         self.direction = direction
+        
+        if lowFlushStrait == None:
+            lowFlushStrait = game.direction
+        self.lowFlushStrait = lowFlushStrait
         
         if nplay == None:
             nplay = len(game.plays)
@@ -68,10 +77,12 @@ class PokerDeal(object):
         if pot == None:
             pot = 0
         self.pot = pot
-
+        self.players = []       # Players participating
+        
+        
                         # Join each player to deal
         for player in table.players:
-            player.joinDeal(self)
+            self.joinDeal(player)
                         
         """
         place the board cards
@@ -90,8 +101,7 @@ class PokerDeal(object):
                     if tR("deal"):
                         print("draw:{}".format(card))
                     if card is not None:
-                        boardCard = PokerCard(self.table, baseCard=card, position=pos)
-                        player.addCard(boardCard)
+                        player.addCard(card)
                     else:
                         print("draw:{} None".format(card))
                         raise ValueError("drawing None is not expected")
@@ -119,7 +129,7 @@ class PokerDeal(object):
             return
         
         if doPrompt:
-            amount = player.bet(doPrompt=doPrompt,
+            amount = player.bet(deal = self, doPrompt=doPrompt,
                                 position=position, amount=amount)
         if amount == None:
             amount = player.minBet     
@@ -146,6 +156,46 @@ class PokerDeal(object):
     def getBoard(self):
         return self.board
 
+            
+    def getHands(self, player=None,
+                 direction=None):
+        """
+        Determine what hands are currently makeable given
+        the player's cards and community cards
+        Returns PokerComb object with hands info
+        player - current player
+        direction - High, Low, High_Low
+        """
+        if direction is None:
+            direction = self.direction
+            
+        player_cards = player.getCards()
+        board = self.getBoard()
+        board_groups = board.getGroups()
+        hand_comb = PokerComb(direction=direction,
+                              lowFlushStrait=self.lowFlushStrait)
+        for board_group in board_groups:
+            hand_cards = player_cards[:]        # copy group
+            board_group_list = list(board_group)
+            hand_cards.extend(board_group_list)      # Possibly more than 5
+            if len(hand_cards) >= self.handSize():
+                hand_comb.addComb(hand_cards, self.handSize())
+        return hand_comb
+
+
+    def getPlayer(self, pos=1):
+        """
+        obtain player by position, starting at 1
+        """
+        return self.players[pos-1]
+    
+    def nPlayers(self):
+        """
+        Returns number of participating players
+        """
+        return len(self.players)
+    
+    
 
     def handSize(self):
         return PokerCardBase.cardsInHand()
@@ -154,7 +204,16 @@ class PokerDeal(object):
         if self.playNum < self.nPlay:
             return True
         return False
-    
+
+
+    def joinDeal(self, player):
+        """
+        Join player to deal,
+        recording player having joined
+        """
+        self.players.append(player)
+        player.joinDeal(self)
+        
     
     def nextPlay(self):
         if self.hasMorePlays():

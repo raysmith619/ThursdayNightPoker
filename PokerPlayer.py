@@ -6,9 +6,7 @@ Created on Mar 8, 2017
 '''
 from __future__ import print_function
 
-from PokerDeal import PokerDeal
-from PokerHands import PokerHands
-#from pcards.PokerTable import deal
+from PokerHandDirection import PokerHandDirection
 
 # Exceptions
 
@@ -33,7 +31,7 @@ class PokerPlayer(object):
         playerName - player name
         '''
         self.name = name
-        self.cards = []         # PokerCard
+        self.cards = []         # PokerHandDirection
         self.cash = 100
         self.minBet = 1
         
@@ -76,13 +74,13 @@ class PokerPlayer(object):
         Initially we find the hand strength(possible) and bet on that alone
         Return None to drop, 0 to check, or bet amount
         """
-        if (self.deal.direction == PokerDeal.HIGH
-            or self.deal.direction == PokerDeal.HIGH_LOW):
-            self.handsHigh = self.getHands(self.deal, direction=PokerDeal.HIGH, sort=True)
+        if (self.deal.direction == PokerHandDirection.HIGH
+            or self.deal.direction == PokerHandDirection.HIGH_LOW):
+            self.handsHigh = self.getHands(direction=PokerHandDirection.HIGH)
         
-        if (self.deal.direction == PokerDeal.LOW
-            or self.deal.direction == PokerDeal.HIGH_LOW):
-            self.handsLow = self.getHands(self.deal, direction=PokerDeal.LOW, sort=True)
+        if (self.deal.direction == PokerHandDirection.LOW
+            or self.deal.direction == PokerHandDirection.HIGH_LOW):
+            self.handsLow = self.getHands(direction=PokerHandDirection.LOW)
         """
         Stay in if:
             1. we have a hand(pair Jacks or better for high
@@ -124,16 +122,13 @@ class PokerPlayer(object):
 
     def getCards(self):
         return self.cards[:]
+        
 
-
-    def getHands(self,
-                 deal,
-                 direction=None,
-                 lowFlushStrait=None,
-                 sort=True):
-        poker_hands = PokerHands(deal, direction=direction, lowFlushStrait=lowFlushStrait)
-        return poker_hands.getHands(player=self, sort=sort)
-    
+    def getHands(self, direction=PokerHandDirection.HIGH):
+        """
+        Get list, as PokerComb object, of hands for this player
+        """
+        return self.deal.getHands(player=self, direction=direction)
     
     
     def joinDeal(self, deal):
@@ -142,8 +137,4 @@ class PokerPlayer(object):
         May have ante, position here
         """
         self.deal = deal
-        self.handsHigh = []
-        self.handsLow = []
-        
-
-     
+            

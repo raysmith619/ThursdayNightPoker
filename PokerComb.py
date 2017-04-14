@@ -27,6 +27,10 @@ LOW = PokerHandDirection.LOW
 HIGH_LOW = PokerHandDirection.HIGH_LOW
 tprev = t0 = None           # From timenow
 
+DESC_CARD_MASK = 0x3F           # Mast
+IN_BOARD_MARK = 0x80            # Mark Descripter card as in board
+IS_HIDDEN_MARK = 0x40           # Mark Descripter card as hidden
+
 class PokerComb(object):
     '''
     Poker combinations
@@ -57,8 +61,8 @@ class PokerComb(object):
         if hands:
             self.hands = self.hands2descs(hands)
         else:
-            self.hands = np.zeros((0, self.nHDesc), np.uint8)
-    
+            self.hands = self.emptyHandDescs(0)
+        self.sorted = False     # Set true iff sorted
     
     @staticmethod
     def fileName(prefix):
@@ -81,23 +85,48 @@ class PokerComb(object):
         cards - list of cards
         n_in_hand - length of hand
         """
-        ncomb = self.nComb(len(cards), n_in_hand)
-        old_number = len(self.hands)
-        new_number = old_number + ncomb
-        newHands = np.empty((new_number, self.nHDesc), dtype=np.uint8)
-        for i in xrange(old_number):
-            newHands[i] = self.hands[i]     # row == card
- 
-        # Generate new combination hands
-        new_combs = self.combs(cards, n_in_hand)
-        
-        for i in xrange(ncomb):
-            cc = new_combs[i]
-            newHands[i+old_number] = cc
-                   
-        # Add in new cards,
-        self.hands = newHands
+        card_combs = itertools.combinations(cards, n_in_hand)
+        n_comb = self.nComb(len(cards), n_in_hand)
+        nds = self.emptyHandDescs(n_comb)
+        for i,card_comb in enumerate(card_combs): 
+            nds[i] = self.cards2desc(card_comb)
+        self.addDescs(nds)
         return self.hands
+
+
+    def addCombGroup(self, deck_cards, group_cards, handSize):
+        """
+        Add new hands of handSize, creatable by using group cards with all the
+        cards from the group
+        """
+        group_len = len(group_cards)
+        if group_len > handSize:
+            raise AssertionError("Group({}) is not less than or equal handSize({})".format(
+                    group_len, handSize))
+        nfrom_deck = handSize - group_len
+        deck_combs = self.combinations(deck_cards, nfrom_deck)
+        n_comb = self.nComb(len(deck_cards), nfrom_deck)
+        new_descs = self.emptyHandDescs(n_comb)
+        for i, deck_comb in enumerate(deck_combs):
+            hand_cards = list(deck_comb)
+            hand_cards.extend(group_cards)
+            new_descs[i] = self.cards2desc(hand_cards)
+        self.addDescs(new_descs)    
+        
+        
+        
+        
+        
+    def addDescs(self, new_descs):
+        """
+        Add array of hand descriptions, of numpy format
+        to hands
+            new_descs - numpy array of card descriptors
+        hands is not sorted
+        """
+        self.hands = np.append(self.hands, new_descs, axis=0)
+        self.sorted = False         # Mark as not sorted        
+        
 
     tprev = t0 = None
     @staticmethod
@@ -126,7 +155,7 @@ class PokerComb(object):
         Load combination data
         from file
         """
-        if not re.match('\.[^.]*$', filename):
+        if not re.match(r'^.*\.[^.]*$', filename):
             filename += '.npy'          # Default extension
         self.hands = np.load(filename)
         
@@ -136,16 +165,40 @@ class PokerComb(object):
         to file
         """
         if not re.match('\.[^.]*$', filename):
-            filename += '.npy'          # Default extension
-        self.hands.view('uint8,uint8,uint8,uint8,uint8,uint8,uint8,uint8').sort(order=['f0','f1', 'f2'], axis=0)
+            filename += '.npy'
+        self.sortComb()          # Default extension
         np.save(filename, self.hands)
 
+
+    def sortComb(self):
+        """
+        Sort hands combination
+        """
+        self.hands.view('uint8,uint8,uint8,uint8,uint8,uint8,uint8,uint8').sort(order=['f0','f1', 'f2'], axis=0)
+        self.sorted = True
+
+
+    def sortCombIf(self):
+        """
+        Sort hands combination if not already sorted
+        """
+        if not self.sorted:
+            self.sortComb()
+
+    def emptyHandDescs(self, nhands):
+        """
+        Returns an numpy array for nhands
+        """
+        empty_hands = np.zeros((nhands, self.nHDesc), np.uint8)
+        return empty_hands
+    
+    
 
     def fileExists(self, filename):
         """
         Returns true iff data file exists
         """
-        if not re.match('\.[^.]*$', filename):
+        if not re.match(r'^.*\.[^.]*$', filename):
             filename += '.npy'          # Default extension
         return os.path.isfile(filename)         
                 
@@ -205,10 +258,8 @@ class PokerComb(object):
     def bestHand(self):
         if len(self.hands) == 0:
             raise AssertionError("No hands available")
-        best_hand_desc = self.hands[0]
-        for other_desc in list(self.hands):
-            if self.descCmp(other_desc, best_hand_desc) > 0:
-                best_hand_desc = other_desc
+        self.sortCombIf()
+        best_hand_desc = self.hands[-1]
         best_hand = self.desc2hand(best_hand_desc)
         return best_hand
     
@@ -290,7 +341,12 @@ class PokerComb(object):
 
         cards = hand._cards
         for i, card in enumerate(cards):
-            hand_desc[i+self.cardStart] = card.index()
+            card_byte = card.index()
+            if card.isInBoard():
+                card_byte += IN_BOARD_MARK
+            if card.isHidden():
+                card_byte += IS_HIDDEN_MARK
+            hand_desc[i+self.cardStart] = card_byte
 
         return hand_desc
 
@@ -299,7 +355,7 @@ class PokerComb(object):
         """
         Convert list of hands to np.ndarray of descriptions
         """
-        nds = np.empty((len(hands), self.nHDesc), np.uint8)
+        nds = self.emptyHandDescs(len(hands))
         for i,hand in enumerate(hands):
             hand_desc = self.hand2desc(hand)
             nds[i] = hand_desc
@@ -327,9 +383,9 @@ class PokerComb(object):
         cards = []
         for i in range(PokerCardBase.cardsInHand()):
             cidbyte = desc[self.cardStart+i]
-            is_hidden = cidbyte & 0x80
-            is_board = cidbyte & 0x40 
-            index = cidbyte & 0x3F
+            is_hidden = cidbyte & IS_HIDDEN_MARK
+            is_board = cidbyte & IN_BOARD_MARK 
+            index = cidbyte & DESC_CARD_MASK
             card = PokerCard(index=index)
             if is_hidden != 0:
                 card.setHidden()
@@ -372,7 +428,16 @@ class PokerComb(object):
         hand_desc = self.hands[npos-1]
         hand = self.desc2hand(hand_desc)
         return hand
-    
+
+
+    def combinations(self, cards, n_in_hand):
+        """
+        combinations (from itertools, supporting len(cards) == n_in_hand)
+        """
+        if len(cards) == n_in_hand:
+            return [cards]          # Returning 1 combination
+        return itertools.combinations(cards, n_in_hand)
+
         
     def combs(self, cards, n_in_hand):
         """
@@ -455,9 +520,10 @@ class PokerComb(object):
     def betEqWorse(self, hand):
         """
         Using compressed descriptions to save space
-        Assumes sorted hands
+        Sort iff necessary
         Returns (better, equal, less) numbers of other hands
         """
+        self.sortCombIf()
         hand_desc = self.hand2desc(hand)
         ileft = self.findLeft(self.hands, hand_desc)
         iright = self.findRight(self.hands, hand_desc, ilow=ileft)
@@ -556,12 +622,11 @@ if __name__ == "__main__":
     PyTrace(flagStr=trace_str)
     comb_name = ""          # Combination modifier
     testgame = ""
-    testgame = "toy"
     testgame = "44"
+    testgame = "toy"
     if testgame == "toy":
         comb_name = testgame
-        table = PokerTable(nPlayer=2)
-        deal = PokerDeal(table, gameName=testgame)
+        deal = PokerDeal(gameName=testgame)
     elif testgame == "toy2":
         comb_name = testgame
         testgame = "toy"

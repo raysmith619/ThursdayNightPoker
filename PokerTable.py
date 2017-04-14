@@ -6,8 +6,7 @@ Created on Mar 8, 2017
 from __future__ import print_function
 
 from PyTrace import tR
-from PokerDeal import PokerDeal
-from PokerGame import PokerGame
+from PokerDeck import PokerDeck
 from PokerPlayer import PokerPlayer
 from PokerGames import Games
 # Exceptions
@@ -73,13 +72,26 @@ class PokerTable(object):
              x2,x3, ... , x7,x8, x8,x1 to augment 3 or 4 of the player's
              cards.  
         '''
-        self.players = []   # Tables players
-        self.deck = deck
-        
+
+        """
+        The game can determine most all basic conditions
+        """
+                
         if gameName is None:
             gameName = "44"
         self.gameName = gameName
+        if gameName not in Games:
+            raise UnsupportedGameError("We don't know of game {}".format(gameName))
+        
         self.game = Games[gameName]
+        self.game.setPokerSettings()
+        
+        if deck is None:
+            deck = PokerDeck()
+        self.deck = deck
+
+        
+        self.players = []   # Tables players
         
         if direction is None:
             direction = 3
@@ -139,32 +151,5 @@ class PokerTable(object):
         if name == posName:
             return True
         return False
-
-    def deal(self,
-            newGame=True,
-            shuff=True,
-            gameName = None,
-            direction = None,   # direction overrides game defaule
-            deck=None):
-        if newGame:
-            thisDeal = self.thisDeal = PokerDeal(self,
-                                         shuff=shuff,
-                                         gameName=gameName,
-                                         direction=direction,
-                                         deck=deck)
-        return self.thisDeal    
-"""
-Stanalone test / exercise
-"""
-if __name__ == "__main__":
-    traceAll = False
-    table = PokerTable()
-    deal = table.deal(gameName="44")
-    table.displaySimple(showMe=True)
-    if traceAll:
-        table.displaySimple(showAll=True)
-    while deal.hasMorePlays():
-        deal.play()
-    print("End of Hand")
      
      
