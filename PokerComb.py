@@ -158,6 +158,12 @@ class PokerComb(object):
         if not re.match(r'^.*\.[^.]*$', filename):
             filename += '.npy'          # Default extension
         self.hands = np.load(filename)
+        deck_stat_match = re.match(r'^.*_(\d+)_(\d+)_(\d+).*', filename)
+        if deck_stat_match:
+            ncard = deck_stat_match.group(1)
+            nsuit = deck_stat_match.group(2)
+            ninsuit = deck_stat_match.group(3)
+            PokerCardBase.setPokerSettings(ncard=ncard, nsuit=nsuit, ninsuit=ninsuit)
         
     def saveComb(self, filename):
         """
@@ -623,7 +629,7 @@ if __name__ == "__main__":
     comb_name = ""          # Combination modifier
     testgame = ""
     testgame = "44"
-    testgame = "toy"
+    #testgame = "toy"
     if testgame == "toy":
         comb_name = testgame
         deal = PokerDeal(gameName=testgame)
@@ -722,6 +728,28 @@ if __name__ == "__main__":
         print("best_hand={}({})".format(best_hand_low.show_value(full=True), best_hand_low.showCards()))
         nbetter, neq, nworse = hand_comb_low.betEqWorse(best_hand)
         print("\tbetter={}, equal={}, worse={}".format(nbetter, neq, nworse))
+        
+        print("\nLooking at all test high hands")
+        for hand  in sorted(all_hands, reverse=True):
+            hand_str = hand.showCards()
+            hand_value = hand.show_value(short=False, full=True)
+            nbetter, neq, nworse = hand_comb.betEqWorse(hand)
+            bounded_str = hand_comb_low.bounded(hand, nbetter, neq, nworse)
+            print("{}: {}> {}= {}<  {}    bounded: {}".format(hand_str,
+                                         nbetter, neq, nworse,hand_value,
+                                         bounded_str))
+        
+        
+        print("\nLooking at all test low hands")
+        for hand  in sorted(all_hands):
+            hand_str = hand.showCards()
+            hand_value = hand.show_value(short=False, full=True)
+            nbetter, neq, nworse = hand_comb_low.betEqWorse(hand)
+            bounded_str = hand_comb_low.bounded(hand, nbetter, neq, nworse)
+            print("{}: {}> {}= {}<  {}    bounded: {}".format(hand_str,
+                                         nbetter, neq, nworse,hand_value,
+                                         bounded_str))
+            
         
     """ """       
     testit("2D 5S 7H 6C 4C")

@@ -290,22 +290,22 @@ class PokerCardBase(object):
             then nCardInStrait and nCardInFlush are set to nCardInHand
         """
         if nsuit is not None:
-            PokerCardBase.nSuit = nsuit
+            PokerCardBase.nSuit = int(nsuit)
         if ninsuit is not None:
-            PokerCardBase.nInSuit = ninsuit
+            PokerCardBase.nInSuit = int(ninsuit)
         if ncard is not None:
-            PokerCardBase.nCard = ncard
+            PokerCardBase.nCard = int(ncard)
         elif nsuit is not None or ninsuit is not None:
             PokerCardBase.nCard = PokerCardBase.nSuits() * PokerCardBase.cardsInSuit()
         if nCardInHand is not None:
-            PokerCardBase.nCardInHand = nCardInHand
+            PokerCardBase.nCardInHand = int(nCardInHand)
         if nCardInStrait is not None:
-            PokerCardBase.nCardInStrait = nCardInStrait
+            PokerCardBase.nCardInStrait = int(nCardInStrait)
         if nCardInFlush is not None:
-            PokerCardBase.nCardInFlush = nCardInFlush
+            PokerCardBase.nCardInFlush = int(nCardInFlush)
         if nCardInHand is not None and nCardInStrait is None and nCardInFlush is None:
-            PokerCardBase.nCardInStrait = nCardInHand
-            PokerCardBase.nCardInFlush = nCardInFlush
+            PokerCardBase.nCardInStrait = int(nCardInHand)
+            PokerCardBase.nCardInFlush = int(nCardInFlush)
     
     
     @staticmethod
@@ -341,7 +341,7 @@ class PokerCardBase(object):
 
     @staticmethod
     def cardsInSuit():
-        return PokerCardBase.nInSuit
+        return int(PokerCardBase.nInSuit)
 
     @staticmethod
     def cardsInFlush():
